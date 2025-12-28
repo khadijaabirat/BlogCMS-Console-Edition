@@ -1,21 +1,44 @@
 <?php 
 
 class Utilisateur{
-    protected int $id;
+    protected static int $counter = 1; 
+    private int $id;
+    private static array $usernames = [];
     protected string $username;
+    private static array $emails = [];
     protected string $email;
     protected string $password;
     protected DateTime $createdAt; 
-    protected ?DateTime $lastLogin; 
+    protected ?DateTime $lastLogin=null; 
 
-    public function __construct($id,$username,$email,$password,$createdAt)
+
+    public function __construct($username,$email,$password)
     {
-        $this->id=$id;
+        $this->id = self::$counter;
+        self::$counter++;
+            if (strlen($username) < 3 || strlen($username) > 50) {
+        throw new Exception("Username est petit");
+      }
+              if (in_array($username, self::$usernames)) {
+            throw new Exception("Username deja utilise");
+        }
+        self::$usernames[] = $username;
+        $this->username = $username;
         $this->username=$username;
-        $this->email=$email;
-        $this->password=password_hash($password, PASSWORD_DEFAULT);
-        $this->createdAt=$createdAt;
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new Exception("Email invalide");
+        }
+        if (in_array($email, self::$emails)) {
+            throw new Exception("Email deja utilise");
+        }
+        self::$emails[] = $email;
+        $this->email = $email;
+        $this->password = password_hash($password, PASSWORD_DEFAULT);
+        $this->createdAt= new DateTime();
         $this->lastLogin=null;
+    }
+        public function getId(){
+        return $this->id;
     }
         public function getusername(){
     return $this->username;
@@ -26,7 +49,17 @@ class Utilisateur{
 public function getpassword(){
     return $this->password;
 }
+    public function getCreatedAt(): DateTime {
+        return $this->createdAt;
+    }
 
+
+    public function setLastLogin(): void {
+        $this->lastLogin = new DateTime(); 
+    }
+    public function getLastLogin(): ?DateTime {
+        return $this->lastLogin;
+    }
 
 }
 
@@ -36,8 +69,11 @@ class Auteur extends Utilisateur {
     private array $articles=[];
     private array $commentaires=[];
 
-    public function __construct($id, $username, $email, $password, $createdAt,$bio,$articles=[],$commentaires=[])
-    {   parent::__construct($id,$username,$email,$password,$createdAt);
+    public function __construct($username, $email, $password,$bio)
+    {   parent::__construct($username,$email,$password);
+                if (strlen($bio) > 500) {
+            throw new Exception("La biographie ne peut pas depasser 500 caractères.");
+        }
         $this->bio=$bio;
         foreach($articles as $article){
             $this->articles[]=$article;
@@ -47,56 +83,92 @@ class Auteur extends Utilisateur {
             $this->commentaires[]=$commentaire;
         }
     } 
+        public function getBio(): string {
+        return $this->bio;
+    }
     public function ajouterarticle(Article $article){
-        $this->articles=$article;
+        $this->articles[]=$article;
     }
     public function getMyArticles(){
         return $this->articles;
     }
+    
 }
 class Moderateur extends Utilisateur{
 
 }
-class Administrateur extends Moderateur{
-    private bool $isSuprAdmin;
-        public function __construct($id, $username, $email, $password, $createdAt,$isSuprAdmin)
-    {   parent::__construct($id,$username,$email,$password,$createdAt);
-        $this->isSuprAdmin=$isSuprAdmin;
-    } 
-}
 class Editeur extends Moderateur{
     private string $moderationLevel;
-            public function __construct($id, $username, $email, $password, $createdAt,$moderationLevel)
-    {   parent::__construct($id,$username,$email,$password,$createdAt);
+    
+         public function __construct($username, $email, $password,$moderationLevel)
+    {   parent::__construct($username,$email,$password);
+        $allowed = ['junior', 'senior', 'chief'];
+          if (!in_array($level, $allowed)) {
+            throw new Exception("Niveau de modération invalide");
+        }
         $this->moderationLevel=$moderationLevel;
     } 
+        public function getLevel(): string {
+        return $this->moderationLevel;
+    }
 }
+class Administrateur extends Moderateur{
+    private bool $isSuprAdmin;
+        public function __construct($username, $email, $password, $createdAt,$isSuperAdmin = false)
+    {   parent::__construct($username,$email,$password,$createdAt);
+        $this->isSuprAdmin=$isSuprAdmin;
+    } 
+    
+    public function getisSuperAdmin():bool{
+        return $this->isSuperAdmin;
+    }
+
+    public function setSuperAdmin(bool $status):void{
+        $this->isSuperAdmin = $status;
+    }
+}
+
 
 class Article{
 
+    protected static int $counter = 1; 
     private int $id;
     private string $title;
     private string $content;
-    private Auteur $auteur;
     private string $excerpt;
+    private Auteur $auteur;
     private string $status;
+    private array $allowedStatus = ['draft', 'published', 'archived'];
     private DateTime $createdAt; 
-    private DateTime $publishedAt;    
-    private DateTime $updatedAt; 
+    private ?DateTime $publishedAt=null;    
+    private ?DateTime $updatedAt=null; 
     private array $commentaires=[];
     private array $categories=[]; 
 
-    public function __construct($id,$title,$content,Auteur $auteur,$excerpt,$status,$createdAt,$publishedAt,$updatedAt,$commentaires=[],$categories=[])
+    public function __construct($title,$content,$status='draft',Auteur $auteur)
     {
-        $this->id=$id;
+        $this->id=self::$counter;
+        self::$counter++;
+           if (strlen($title) < 2 || strlen($title) > 200) {
+            throw new Exception("Le titre doit contenir entre 2 et 200 caractere");
+        }
         $this->title=$title;
+                if (strlen($content) > 10000) {
+            throw new Exception("Le contenu ne peut pas depasser 10000 caractères.");
+        }
         $this->content=$content;
+        $this->excerpt=substr($content, 0, 150);
         $this->auteur=$auteur;
-        $this->excerpt=$excerpt;
-        $this->status="Brouillon";
         $this->createdAt=new DateTime();
-        $this->publishedAt=$publishedAt;
-        $this->updatedAt=$updatedAt;
+                if (!in_array($status, $this->allowedStatus)) {
+            throw new Exception("Statut invalide");
+        }
+         $this->status = $status;
+                if ($status === 'published') {
+            $this->publishedAt = new DateTime(); 
+        }
+
+       $this->updatedAt = null; 
 
         foreach($commentaires as $commentaire)
         {
@@ -107,37 +179,111 @@ class Article{
             $this->categories[]=$categorie;
         }
     }  
-    public function getTitle(){
+        public function getId(): int {
+        return $this->id;
+    }
+        public function getTitle(): string {
         return $this->title;
+    }
+        public function getContent(): string {
+        return $this->content;
+    }
+    public function getExcerpt(): string {
+        return $this->excerpt;
+    }
+        public function getStatus(): string {
+        return $this->status;
+    }
+        public function getAuthor(): Auteur {
+        return $this->Auteur;
+    }
+        public function getCreatedAt(): DateTime {
+        return $this->createdAt;
+    }
+        public function getPublishedAt(): ?DateTime {
+        return $this->publishedAt;
+    }
+        public function setUpdatedAt(): void {
+        $this->updatedAt = new DateTime();
+    }
+    public function getUpdatedAt(): ?DateTime {
+        return $this->updatedAt;
     }
 }
 class Categories{
+    protected static $counter;
     protected int $id;
+    private static array $names = [];
     protected string $name;
     protected string $description;
     protected DateTime $createAt;
 
-    public function __construct($id,$name,$description,$createAt){
-        $this->id=$id;
+    public function __construct($name,$description){
+        $this->id=self::$counter;
+        self::$counter++;
+        if(strlen($name)<2 || strlen($name)>50)
+        {
+            throw new Exception("le nom de categorie est petit");
+        }
+        else if(in_array($name,self::$names))
+        {
+            throw new Exception("le nom de categorie est deja existe");
+        }
         $this->name=$name;
+        self::$names[]=$name;
+               if (strlen($description) > 255) {
+            throw new Exception("La description ne peut pas depasser 255 caractere");
+        }
         $this->description=$description;
-        $this->createAt=$createAt;
+        $this->createAt=new DateTime;
     }
-
+        public function getNameCat(): string {
+        return $this->name;
+    }
+        public function getDescription(): string {
+        return $this->description;
+    }
+        public function getcreateAtCat(): DateTime {
+        return $this->createAt;
+    }
 }
 class Commentaires{
+    protected static $counter;
     private int $id;
     private Utilisateur $Auteur;
     private string $content;
-    private DateTime $publishedAt;
+    private string $status;
+    private array $allowedStatus = ['draft', 'published', 'archived'];
+    private DateTime $createdAt; 
+    private ?DateTime $publishedAt=null;    
 
-    public function __construct($id,Utilisateur $Auteur,$content,$publishedAt){
-        $this->id=$id;
+    public function __construct(Utilisateur $Auteur,$content){
+        $this->id=self::$counter;
+        self::$counter;
         $this->Auteur=$Auteur;
         $this->content=$content;
         $this->publishedAt=$publishedAt;
 
     }
+        public function getAuthor(): Auteur {
+        return $this->Auteur;
+    }
+        public function getContent(): string {
+        return $this->content;
+    }
+            public function getCreatedAt(): DateTime {
+        return $this->createdAt;
+    }
+        public function getPublishedAt(): ?DateTime {
+        return $this->publishedAt;
+    }
+                    if (!in_array($status, $this->allowedStatus)) {
+            throw new Exception("Statut invalide");
+        }
+         $this->status = $status;
+                if ($status === 'published') {
+            $this->publishedAt = new DateTime(); 
+        }
 }
 
 class Collection {
@@ -222,11 +368,14 @@ if($User=== null)
             echo "4. Supprimer Mes Article<br>";
             echo "5. Creé commentaire<br>"; 
             $choixauteur=readline("choisir une option :");
-            if( $choixauteur==2)
-            {echo "\n--- CRÉATION D'UN ARTICLE ---\n";
-            $title = readline("Entrez le titre : ");
-            $contenu = readline("Entrez le contenu : ");
-            $newArticle= new Article ($title,$)
+                    if( $choixauteur==2)
+                    {echo "\n--- Creation d'un Article ---\n";
+                    $title = readline("Entrez le titre : ");
+                    $contenu = readline("Entrez le contenu : ");
+                    $newArticle= new Article ($title,$content,$auteur);
+
+                    $auteur->ajouterarticle($newArticle);
+                    echo "\nL'article a ajouté à votre liste .\n";
 
             }
         }
