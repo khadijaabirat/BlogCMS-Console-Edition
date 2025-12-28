@@ -22,44 +22,46 @@ class Utilisateur{
               if (in_array($username, self::$usernames)) {
             throw new Exception("Username deja utilise");
         }
-        self::$usernames[] = $username;
         $this->username = $username;
-        $this->username=$username;
+                self::$usernames[] = $username;
+
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw new Exception("Email invalide");
         }
         if (in_array($email, self::$emails)) {
             throw new Exception("Email deja utilise");
         }
-        self::$emails[] = $email;
+        
         $this->email = $email;
+        self::$emails[] = $email;
+
         $this->password = password_hash($password, PASSWORD_DEFAULT);
         $this->createdAt= new DateTime();
         $this->lastLogin=null;
     }
-        public function getId(){
+        public function getId():int{
         return $this->id;
     }
-        public function getusername(){
+        public function getusername(): string {
     return $this->username;
 }
-        public function getemail(){
+        public function getemail(): string {
     return $this->email;
 }
-public function getpassword(){
+public function getpassword(): string {
     return $this->password;
 }
     public function getCreatedAt(): DateTime {
         return $this->createdAt;
     }
-
+    public function getLastLogin(): ?DateTime {
+        return $this->lastLogin;
+    }
 
     public function setLastLogin(): void {
         $this->lastLogin = new DateTime(); 
     }
-    public function getLastLogin(): ?DateTime {
-        return $this->lastLogin;
-    }
+
 
 }
 
@@ -75,21 +77,14 @@ class Auteur extends Utilisateur {
             throw new Exception("La biographie ne peut pas depasser 500 caractères.");
         }
         $this->bio=$bio;
-        foreach($articles as $article){
-            $this->articles[]=$article;
-        }
-        foreach($commentaires as $commentaire)
-        {
-            $this->commentaires[]=$commentaire;
-        }
     } 
         public function getBio(): string {
         return $this->bio;
     }
-    public function ajouterarticle(Article $article){
+    public function ajouterarticle(Article $article):void{
         $this->articles[]=$article;
     }
-    public function getMyArticles(){
+    public function getMyArticles():array{
         return $this->articles;
     }
     
@@ -99,11 +94,11 @@ class Moderateur extends Utilisateur{
 }
 class Editeur extends Moderateur{
     private string $moderationLevel;
-    
+
          public function __construct($username, $email, $password,$moderationLevel)
     {   parent::__construct($username,$email,$password);
-        $allowed = ['junior', 'senior', 'chief'];
-          if (!in_array($level, $allowed)) {
+        $Levels = ['junior', 'senior', 'chief'];
+          if (!in_array($moderationLevel, $Levels)) {
             throw new Exception("Niveau de modération invalide");
         }
         $this->moderationLevel=$moderationLevel;
@@ -113,19 +108,21 @@ class Editeur extends Moderateur{
     }
 }
 class Administrateur extends Moderateur{
-    private bool $isSuprAdmin;
-        public function __construct($username, $email, $password, $createdAt,$isSuperAdmin = false)
-    {   parent::__construct($username,$email,$password,$createdAt);
-        $this->isSuprAdmin=$isSuprAdmin;
+    private bool $isSuperAdmin;
+public function __construct($username, $email, $password, $isSuperAdmin=false)
+
+    {   parent::__construct($username,$email,$password);
+$this->isSuperAdmin = $isSuperAdmin;
     } 
     
-    public function getisSuperAdmin():bool{
-        return $this->isSuperAdmin;
-    }
+public function getisSuperAdmin(): bool {
+    return $this->isSuperAdmin;
+}
 
-    public function setSuperAdmin(bool $status):void{
-        $this->isSuperAdmin = $status;
-    }
+public function setSuperAdmin(bool $status): void {
+    $this->isSuperAdmin = $status;
+}
+
 }
 
 
@@ -138,14 +135,13 @@ class Article{
     private string $excerpt;
     private Auteur $auteur;
     private string $status;
-    private array $allowedStatus = ['draft', 'published', 'archived'];
     private DateTime $createdAt; 
     private ?DateTime $publishedAt=null;    
     private ?DateTime $updatedAt=null; 
     private array $commentaires=[];
     private array $categories=[]; 
 
-    public function __construct($title,$content,$status='draft',Auteur $auteur)
+    public function __construct($title,$content,Auteur $auteur,$status='draft')
     {
         $this->id=self::$counter;
         self::$counter++;
@@ -158,26 +154,18 @@ class Article{
         }
         $this->content=$content;
         $this->excerpt=substr($content, 0, 150);
-        $this->auteur=$auteur;
-        $this->createdAt=new DateTime();
-                if (!in_array($status, $this->allowedStatus)) {
+                $allowedStatus = ['draft', 'published', 'archived'];
+                if (!in_array($status, $allowedStatus)) {
             throw new Exception("Statut invalide");
         }
          $this->status = $status;
-                if ($status === 'published') {
+          if ($status === 'published') {
             $this->publishedAt = new DateTime(); 
         }
-
+        $this->auteur=$auteur;
+        $this->createdAt=new DateTime();
        $this->updatedAt = null; 
 
-        foreach($commentaires as $commentaire)
-        {
-            $this->commentaires[]=$commentaire;
-        }
-        foreach($categories as $categorie)
-        {
-            $this->categories[]=$categorie;
-        }
     }  
         public function getId(): int {
         return $this->id;
@@ -194,9 +182,10 @@ class Article{
         public function getStatus(): string {
         return $this->status;
     }
-        public function getAuthor(): Auteur {
-        return $this->Auteur;
-    }
+public function getAuthor(): Auteur {
+    return $this->auteur;
+}
+
         public function getCreatedAt(): DateTime {
         return $this->createdAt;
     }
@@ -209,14 +198,22 @@ class Article{
     public function getUpdatedAt(): ?DateTime {
         return $this->updatedAt;
     }
+    public function ajouterCommentaire(Commentaires $commentaire): void {
+    $this->commentaires[] = $commentaire;
+}
+
+public function getCommentaires(): array {
+    return $this->commentaires;
+}
+
 }
 class Categories{
-    protected static $counter;
+    protected static int $counter = 1;
     protected int $id;
     private static array $names = [];
     protected string $name;
     protected string $description;
-    protected DateTime $createAt;
+    protected DateTime $createdAt;
 
     public function __construct($name,$description){
         $this->id=self::$counter;
@@ -225,7 +222,7 @@ class Categories{
         {
             throw new Exception("le nom de categorie est petit");
         }
-        else if(in_array($name,self::$names))
+        if(in_array($name,self::$names))
         {
             throw new Exception("le nom de categorie est deja existe");
         }
@@ -235,7 +232,7 @@ class Categories{
             throw new Exception("La description ne peut pas depasser 255 caractere");
         }
         $this->description=$description;
-        $this->createAt=new DateTime;
+        $this->createdAt=new DateTime;
     }
         public function getNameCat(): string {
         return $this->name;
@@ -244,29 +241,39 @@ class Categories{
         return $this->description;
     }
         public function getcreateAtCat(): DateTime {
-        return $this->createAt;
+        return $this->createdAt;
     }
 }
 class Commentaires{
-    protected static $counter;
+    protected static int $counter = 1;
     private int $id;
-    private Utilisateur $Auteur;
+    private ?Auteur $Auteur;
     private string $content;
     private string $status;
-    private array $allowedStatus = ['draft', 'published', 'archived'];
     private DateTime $createdAt; 
     private ?DateTime $publishedAt=null;    
 
-    public function __construct(Utilisateur $Auteur,$content){
+    public function __construct(?Auteur $Auteur=null,$content,$status = 'draft'){
         $this->id=self::$counter;
-        self::$counter;
+        self::$counter++;
         $this->Auteur=$Auteur;
         $this->content=$content;
-        $this->publishedAt=$publishedAt;
+         $allowedStatus = ['draft', 'published', 'archived'];
+        if (!in_array($status, $allowedStatus)) {
+            throw new Exception("Statut invalide");
+        }
+         $this->status = $status;
+         $this->createdAt=new DateTime();
+        if ($status === 'published') {
+            $this->publishedAt = new DateTime(); 
+        }
 
     }
-        public function getAuthor(): Auteur {
-        return $this->Auteur;
+        public function getAuthor(): string {
+                if ($this->Auteur !== null) {
+            return $this->Auteur->getUsername();
+        }
+        return 'Visiteur';
     }
         public function getContent(): string {
         return $this->content;
@@ -277,13 +284,7 @@ class Commentaires{
         public function getPublishedAt(): ?DateTime {
         return $this->publishedAt;
     }
-                    if (!in_array($status, $this->allowedStatus)) {
-            throw new Exception("Statut invalide");
-        }
-         $this->status = $status;
-                if ($status === 'published') {
-            $this->publishedAt = new DateTime(); 
-        }
+                    
 }
 
 class Collection {
@@ -294,10 +295,10 @@ class Collection {
 
     private function __construct() {
         $this->Users = [
-            new Auteur(1,'Alice', 'alice@blog.com','123',new DateTime(),'my bio'),
-            new Auteur(2,'Bob', 'bob@blog.com','123', new DateTime(), 'My bio'),
-            new Editeur(3,'Charlie', 'charlie@blog.com','123', new DateTime(), 'chief'),
-            new Administrateur(4,'Admin', 'admin@blog.com','123', new DateTime(),true)
+            new Auteur('Alice', 'alice@blog.com','123','my bio'),
+            new Auteur('Bob', 'bob@blog.com','123','My bio'),
+            new Editeur('Charlie', 'charlie@blog.com','123','chief'),
+            new Administrateur('Admin', 'admin@blog.com','123',true)
         ];
         $this->Catgs=[];
 
@@ -318,7 +319,7 @@ class Collection {
             {
                 if($user->getusername()===$username || $user->getemail()===$email)
                 {
-                    if(password_verify(($password,$user->getpassword())))
+if(password_verify($password, $user->getpassword()))
                     {
                     $this->current_user=$user;
                     return true;
