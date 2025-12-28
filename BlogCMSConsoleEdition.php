@@ -87,6 +87,16 @@ class Auteur extends Utilisateur {
     public function getMyArticles():array{
         return $this->articles;
     }
+public function supprimerArticle(int $id) {
+    foreach ($this->articles as $index => $article) {
+        if ($article->getId() === $id) {
+            unset($this->articles[$index]);
+            $this->articles = array_values($this->articles); 
+            return true;
+        }
+    }
+    return false;
+}
     
 }
 class Moderateur extends Utilisateur{
@@ -173,9 +183,15 @@ class Article{
         public function getTitle(): string {
         return $this->title;
     }
+            public function setTitle($title)  {
+                 $this->title = $title;
+                 }
         public function getContent(): string {
         return $this->content;
-    }
+    }   
+     public function setContent($content)
+      { $this->content = $content; }
+
     public function getExcerpt(): string {
         return $this->excerpt;
     }
@@ -205,7 +221,14 @@ public function getAuthor(): Auteur {
 public function getCommentaires(): array {
     return $this->commentaires;
 }
-
+public function AuteurArticleTitle($title) {
+    foreach ($this->articles as $article) {
+        if ($article->getTitle() == $title) {
+            return $article;
+        }
+    }
+    return null;
+}
 }
 class Categories{
     protected static int $counter = 1;
@@ -295,13 +318,12 @@ class Collection {
 
     private function __construct() {
         $this->Users = [
-            new Auteur('Alice', 'alice@blog.com','123','my bio'),
-            new Auteur('Bob', 'bob@blog.com','123','My bio'),
-            new Editeur('Charlie', 'charlie@blog.com','123','chief'),
-            new Administrateur('Admin', 'admin@blog.com','123',true)
+            new Auteur('Alice', 'alice@blog.com','$2y$10$fJT01j42gnc7vpHQ9mAghusaM8seR8VXYk88WRNadxbWmOTJDlE3u','my bio'),
+            new Auteur('Bob', 'bob@blog.com','$2y$10$fJT01j42gnc7vpHQ9mAghusaM8seR8VXYk88WRNadxbWmOTJDlE3u','My bio'),
+            new Editeur('Charlie', 'charlie@blog.com','$2y$10$fJT01j42gnc7vpHQ9mAghusaM8seR8VXYk88WRNadxbWmOTJDlE3u','chief'),
+            new Administrateur('Admin', 'admin@blog.com','$2y$10$fJT01j42gnc7vpHQ9mAghusaM8seR8VXYk88WRNadxbWmOTJDlE3u',true)
         ];
         $this->Catgs=[];
-
     }
 
     public static function getInstance() {
@@ -314,12 +336,12 @@ class Collection {
         public function getUtilisateurs(){
             return $this->Users;
         }
-        public function login($username,$email,$password):bool{
+        public function login($name,$password):bool{
             foreach($this->Users as $user)
             {
-                if($user->getusername()===$username || $user->getemail()===$email)
+                if($user->getusername()===$name || $user->getemail()===$name)
                 {
-if(password_verify($password, $user->getpassword()))
+              if(password_verify($password, $user->getpassword()))
                     {
                     $this->current_user=$user;
                     return true;
@@ -340,80 +362,131 @@ if(password_verify($password, $user->getpassword()))
 $data=Collection::getInstance();
 
 while(true){
-    $User=$data->get_current_user();
-if($User=== null)
+    $user=$data->get_current_user();
+if($user=== null)
     {
-    echo "<br>------MENUE------<br>";
-    echo "1 login <br>";
-    echo "2 quitter <br>";
-    echo "3. Afficher tous les articles\n";
+    echo "\n------MENUE------\n";
+    echo "1 login \n";
+    echo "2. Afficher tous les articles\n";
+    echo "3. quitter \n";
     $choix=readline("choisir une option :");
     if($choix=="1")
         {
-        $name=readline("<br>Email ou Username : ");
-        $pass=readline("<br>Password : ");
+        $name=readline("\nEmail ou Username : ");
+        $pass=readline("\nPassword : ");
 
-         if (!$data->login($name,$pass)){
+            if (!$data->login($name,$pass))
+            {
             echo "erreur : les identifiants incorrects.\n";
             }
-
-         else{
-            echo "<br> bonjour ".$data->get_current_user()->getusername();
-
-            echo "<br>------MENUE------<br>";
+             else
+            {   
+           $user=$data->get_current_user();
+           while ($user !== null)
+             {
+            echo "\n bonjour ".$data->get_current_user()->getusername();
+            echo "\n------MENUE------\n";
             echo "1. Afficher tous les articles\n";
-
-            if ($user instanceof Auteur) {
-            echo "2. Ajouter Article<br>";
-            echo "3. Modifier Mes Article<br>";
-            echo "4. Supprimer Mes Article<br>";
-            echo "5. Creé commentaire<br>"; 
+            if ($user instanceof Auteur) 
+        {
+            echo "2. Ajouter Mon Article\n";
+            echo "3. Modifier Mes Article\n";
+            echo "4. Supprimer Mes Article\n";
+            echo "5. Creé commentaire\n"; 
             $choixauteur=readline("choisir une option :");
-                    if( $choixauteur==2)
-                    {echo "\n--- Creation d'un Article ---\n";
+            if( $choixauteur==2)
+            {
+                        echo "\n--- Creation d'un Article ---\n";
                     $title = readline("Entrez le titre : ");
-                    $contenu = readline("Entrez le contenu : ");
-                    $newArticle= new Article ($title,$content,$auteur);
-
-                    $auteur->ajouterarticle($newArticle);
+                    $content = readline("Entrez le contenu : ");
+                    $newArticle= new Article ($title,$content,$user);
+                    $user->ajouterarticle($newArticle);
                     echo "\nL'article a ajouté à votre liste .\n";
-
             }
+           if( $choixauteur==3){
+echo "\n--- MODIFIER UN ARTICLE ---\n"; 
+        $mesArticles = $user->getMyArticles();
+        if (!$mesArticles) {
+            echo "Vous n'avez aucun article  modifier.\n";
+        } else {
+            foreach ($mesArticles as $art) {
+                echo "title: " . $art->getTitle() . " | contenue: " . $art->getContent() . "\n";
+            }
+            $mod = readline("Entrez le title de l'article pour le modifier: ");
+            $article = $user->AuteurArticleTitle($mod);
+
+            if ($article) {
+                $newTitle = readline("Nouveau titre : ");
+                $newContent = readline("Nouveau contenu : ");
+
+                if (!empty($newTitle)) 
+                    $article->setTitle($newTitle);
+                if (!empty($newContent)) 
+                    $article->setContent($newContent);
+
+                echo "Article modifié \n";
+            } else {
+                echo " Erreur: Article non trouvé dans votre liste.\n";
+            } } }
+if ($choixauteur == "4") {
+    echo "\n--- SUPPRIMER UN ARTICLE ---\n";
+    $mesArticles = $User->getMyArticles();
+    if (empty($mesArticles)) {
+        echo "Vous n'avez aucun article à supprimer.\n";
+    } else {
+        foreach ($mesArticles as $art) {
+                echo "title: " . $art->getTitle() . " | contenue: " . $art->getContent() . "\n";
+        }
+        $idASupprimer =  readline("Entrez l'ID de l'article à supprimer : ");
+
+        if ($User->supprimerArticle($idASupprimer)) {
+            echo "L'article a été supprimé.\n";
+        } else {
+            echo "Article introuvable.\n";
+        }
+    }
+}
+
         }
 
         else if ($user instanceof Administrateur) {
-            echo "2. Publier Articles signer<br>";
-            echo "3. Depublier Articles Signeé<br>";
-            echo "4. Modifier Article singneé<br>";
-            echo "5. Supprimer Articles signeé<br>";
-            echo "6. Creé Catégories<br>";
-            echo "7. Modiffier Catégories<br>";
-            echo "8. Supprimer Catégories<br>";
-            echo "9. Ajouter User<br>";
-            echo "10. Liste des User<br>";
-            echo "11. Modifier User<br>";
-            echo "12. Supprimer User<br>"; 
-            echo "13. changerRole User<br>"; 
-            echo "14. view Dashboard User<br>"; 
+            echo "2. Publier Articles signer\n";
+            echo "3. Depublier Articles Signeé\n";
+            echo "4. Modifier Article singneé\n";
+            echo "5. Supprimer Articles signeé\n";
+            echo "6. Creé Catégories\n";
+            echo "7. Modiffier Catégories\n";
+            echo "8. Supprimer Catégories\n";
+            echo "9. Ajouter User\n";
+            echo "10. Liste des User\n";
+            echo "11. Modifier User\n";
+            echo "12. Supprimer User\n"; 
+            echo "13. changerRole User\n"; 
+            echo "14. view Dashboard User\n"; 
         } 
         else if($user instanceof Editeur) {
-            echo "2. Publier Articles signer<br>";
-            echo "3. Depublier Articles Signeé<br>";
-            echo "4. Modifier Article singneé<br>";
-            echo "5. Supprimer Articles signeé<br>";
-            echo "6. Creé Catégories<br>";
-            echo "7. Modiffier Catégories<br>";
-            echo "8. Supprimer Catégories<br>";
-            echo "9. accepter Commentaires<br>";
-            echo "10. supprimer Commentaires<br>";            
+            echo "2. Publier Articles signer\n";
+            echo "3. Depublier Articles Signeé\n";
+            echo "4. Modifier Article singneé\n";
+            echo "5. Supprimer Articles signeé\n";
+            echo "6. Creé Catégories\n";
+            echo "7. Modiffier Catégories\n";
+            echo "8. Supprimer Catégories\n";
+            echo "9. accepter Commentaires\n";
+            echo "10. supprimer Commentaires\n";            
         } 
-        echo "0 Quitter<br>"; 
+        echo "0 Quitter\n"; 
+        $choixUser = readline("Choisir : ");
 
-            }
+     }
 
          }
     }
-
+    }
+  
+if($choix=="3"){
+    break;
+}
 }
 
 
