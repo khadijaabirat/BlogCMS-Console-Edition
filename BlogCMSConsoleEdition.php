@@ -97,11 +97,62 @@ public function supprimerArticle(int $id) {
     }
     return false;
 }
+    public function creerCommentaire($content): Commentaires {
+        return new Commentaires($this, $content, 'draft');
+    }
     
+    public function AuteurArticleTitle($title) {
+    foreach ($this->articles as $article) {
+        if ($article->getTitle() == $title) {
+            return $article;
+        }
+    }
+    return null;
 }
-class Moderateur extends Utilisateur{
+}
+
+
+class Moderateur extends Utilisateur {
+
+    public function publierArticle(Article $article): void {
+        $article->publier();
+    }
+
+    public function depublierArticle(Article $article): void {
+        $article->depublier();
+    }
+
+    public function modifierArticle(Article $article, string $title, string $content): void {
+        $article->modifier($title, $content);
+    }
+
+    public function supprimerArticle(array &$articles, Article $article): void {
+        $articles = array_filter($articles, fn($a) => $a !== $article);
+    }
+
+    public function creerCategorie(string $name, string $desc): Categories {
+        return new Categories($name, $desc);
+    }
+
+    public function modifierCategorie(Categories $cat, string $name, string $desc): void {
+        $cat->setName($name);
+        $cat->setDescription($desc);
+    }
+
+    public function supprimerCategorie(array &$categories, Categories $cat): void {
+        $categories = array_filter($categories, fn($c) => $c !== $cat);
+    }
+
+    public function accepterCommentaire(Commentaires $comment): void {
+        $comment->publier();
+    }
+
+    public function supprimerCommentaire(array &$comments, Commentaires $comment): void {
+        $comments = array_filter($comments, fn($c) => $c !== $comment);
+    }
 
 }
+
 class Editeur extends Moderateur{
     private string $moderationLevel;
 
@@ -133,7 +184,22 @@ public function setSuperAdmin(bool $status): void {
     $this->isSuperAdmin = $status;
 }
 
+    public function ajouterUser(Utilisateur $user, array &$users): void {
+        $users[] = $user;
+    }
+
+    public function supprimerUser(array &$users, Utilisateur $user): void {
+        $users = array_filter($users, fn($u) => $u !== $user);
+    }
+
+    public function changerRole(Utilisateur $user, string $role): Utilisateur {
+        if ($role === 'editeur') {
+            return new Editeur($user->getusername(), $user->getemail(), $user->getpassword(), 'junior');
+        }
+        return $user;
+    }
 }
+
 
 
 class Article{
@@ -221,14 +287,40 @@ public function getAuthor(): Auteur {
 public function getCommentaires(): array {
     return $this->commentaires;
 }
-public function AuteurArticleTitle($title) {
-    foreach ($this->articles as $article) {
-        if ($article->getTitle() == $title) {
-            return $article;
-        }
+
+
+public function publier(): void {
+    if ($this->status !== 'published')
+         {
+        $this->status = 'published';
+        $this->publishedAt = new DateTime();
+        $this->updatedAt = new DateTime();
     }
-    return null;
 }
+
+public function depublier(): void {
+    if ($this->status === 'published')
+         {
+        $this->status = 'draft';
+        $this->updatedAt = new DateTime();
+    }
+}
+
+public function modifier(string $title, string $content): void {
+    if (strlen($title) < 2 || strlen($title) > 200) {
+        throw new Exception("Titre invalide");
+    }
+    if (strlen($content) > 10000) {
+        throw new Exception("Contenu trop long");
+    }
+
+    $this->title = $title;
+    $this->content = $content;
+    $this->excerpt = substr($content, 0, 150);
+    $this->updatedAt = new DateTime();
+}
+
+
 }
 class Categories{
     protected static int $counter = 1;
@@ -271,14 +363,16 @@ class Commentaires{
     protected static int $counter = 1;
     private int $id;
     private ?Auteur $Auteur;
+     private Article $article;   
     private string $content;
     private string $status;
     private DateTime $createdAt; 
     private ?DateTime $publishedAt=null;    
 
-    public function __construct(?Auteur $Auteur=null,$content,$status = 'draft'){
+    public function __construct(Article $article,$content,?Auteur $Auteur=null,$status = 'draft'){
         $this->id=self::$counter;
         self::$counter++;
+                $this->article = $article;
         $this->Auteur=$Auteur;
         $this->content=$content;
          $allowedStatus = ['draft', 'published', 'archived'];
@@ -307,6 +401,17 @@ class Commentaires{
         public function getPublishedAt(): ?DateTime {
         return $this->publishedAt;
     }
+    public function publier(): void {
+    if ($this->status !== 'published') {
+        $this->status = 'published';
+        $this->publishedAt = new DateTime();
+    }
+}
+
+public function archiver(): void {
+    $this->status = 'archived';
+}
+
                     
 }
 
@@ -392,7 +497,8 @@ if($user=== null)
             echo "2. Ajouter Mon Article\n";
             echo "3. Modifier Mes Article\n";
             echo "4. Supprimer Mes Article\n";
-            echo "5. Creé commentaire\n"; 
+            echo "5. Creé commentaire\n";
+            echo "0. Logout\n";
             $choixauteur=readline("choisir une option :");
             if( $choixauteur==2)
             {
@@ -404,7 +510,7 @@ if($user=== null)
                     echo "\nL'article a ajouté à votre liste .\n";
             }
            if( $choixauteur==3){
-echo "\n--- MODIFIER UN ARTICLE ---\n"; 
+          echo "\n--- MODIFIER UN ARTICLE ---\n"; 
         $mesArticles = $user->getMyArticles();
         if (!$mesArticles) {
             echo "Vous n'avez aucun article  modifier.\n";
@@ -428,9 +534,9 @@ echo "\n--- MODIFIER UN ARTICLE ---\n";
             } else {
                 echo " Erreur: Article non trouvé dans votre liste.\n";
             } } }
-if ($choixauteur == "4") {
+if ($choixauteur == 4) {
     echo "\n--- SUPPRIMER UN ARTICLE ---\n";
-    $mesArticles = $User->getMyArticles();
+    $mesArticles = $user->getMyArticles();
     if (empty($mesArticles)) {
         echo "Vous n'avez aucun article à supprimer.\n";
     } else {
@@ -439,15 +545,37 @@ if ($choixauteur == "4") {
         }
         $idASupprimer =  readline("Entrez l'ID de l'article à supprimer : ");
 
-        if ($User->supprimerArticle($idASupprimer)) {
-            echo "L'article a été supprimé.\n";
+        if ($user->supprimerArticle($idASupprimer)) {
+            echo "L'article a été supprime\n";
         } else {
-            echo "Article introuvable.\n";
+            echo "Article nom trouver\n";
         }
     }
 }
+if ($choixauteur == 5) {
+        $articles = $user->getMyArticles();
 
+    if (empty($articles)) {
+        echo "Vous n'avez aucun article\n";
+        return;
+    }
+        foreach ($articles as $index => $article) {
+        echo $index. ". " . $article->getTitle() . "\n";
+    }
+        $choix = readline("Choisir un article : ");
+    $article = $articles[$choix];
+    $content = readline("Votre commentaire : ");
+    $comment = new Commentaires($article, $content, $user);
+    $article->ajouterCommentaire($comment);
+    echo "Commentaire ajouter\n";
+}
+
+    if ($choixauteur == 0) {
+                $data->logout();
+                break;
         }
+
+
 
         else if ($user instanceof Administrateur) {
             echo "2. Publier Articles signer\n";
